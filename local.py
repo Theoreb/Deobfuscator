@@ -62,7 +62,7 @@ class Model:
         if renamed in self.NOT_ALLOWED:
             print(f"The model returned a name that is not allowed. Retrying...")
             self.not_allowed(variable, var_type)
-            return self.generate(variable, context)
+            return self.generate(variable, context, var_type)
         
         while len(renamed) < 5:
             print(f"Failed to generate a good name for the {var_type.value} `{variable}` ({renamed}) Retrying...")
