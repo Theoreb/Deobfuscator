@@ -10,6 +10,7 @@ Eg:
 
 [SEARCH 'f']: Searching context for variable: f in Node of type: FunctionExpression
 [CONTEXT 'f']: Found context (len: 449 chars)
+```
 function (a, c, f) {
     var d = v.createElement('canvas'), k = d.getContext('2d'), g = a.width, e = a.height;
     d.width = g;
@@ -26,6 +27,8 @@ function (a, c, f) {
     k.drawImage(b, 0, 0);
     c(d);
 }
+```
+
 [MODEL 'f']
 [Description]: The purpose of the variable `f` in this JavaScript code is to set the fill style of a `canvas` element.
 
