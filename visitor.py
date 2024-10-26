@@ -21,7 +21,6 @@ class VisitorTask:
             self.var: str = args[0]
             self.context_size: int = args[1]
             self.contexts: list = []
-            self.max_contexts = args[2]
         elif type == Task.APPLY:
             self.changes: tuple = (args[0], args[1])
             self.change_type: str = args[2]
@@ -49,30 +48,20 @@ class VisitorClass:
             return task.identifiers
         
     def get_context(self, path: list[Node], task: VisitorTask):
-        if len(task.contexts) >= task.max_contexts:
+        if len(task.contexts) >= task.context_size:
             return
         
-        result = ""
+        generated_code = ""
+        index = 0
         for i in range(len(path) - 2, 0, -1):
-            # Gain Context
-            result = escodegen.generate(path[i], {'format': { 'indent': { 'style': '' }, 'newline': '' , 'space': '' }} )
-            if len(result) >= task.context_size:
+            if path[i].type in [Syntax.FunctionDeclaration, Syntax.FunctionExpression]:
+                index = i
                 break
-
-        indices = [i for i in range(len(result)) if result.startswith(task.var, i)]
-        results = []
-        for index in indices:
-            left_size = index
-            right_size = len(result) - index - len(task.var)
-            left_offset = (task.context_size - len(task.var)) // 2
-            right_offset = task.context_size - len(task.var) - left_offset
-            left_offset = min(left_size, left_offset)
-            right_offset = min(right_size, right_offset)
-            new_result = '[...]' + result[index - left_offset:index + right_offset + len(task.var)] + '[...]'
-            if not any(similar(new_result, res) for res in results):
-                results.append(new_result)
-
-        return results
+       
+        # Gain Context
+        generated_code = escodegen.generate(path[index], {'format': { 'indent': { 'style': '    ' }, 'newline': '\n' , 'space': ' ' }} )
+        if not generated_code in task.contexts:
+            task.contexts.append(generated_code)
 
     def visit_node(self, node: Node, task: VisitorTask, path: list[Node] = []):
         path = list(path + [node])
@@ -136,7 +125,7 @@ class VisitorClass:
                             return
                     elif task.type == Task.CONTEXT and param.name == task.var:
                         if depth <= 1:
-                            task.contexts.append(self.get_context(path, task))
+                            self.get_context(path, task)
                         else:
                             # print(f"Refused to Context {param.name} because it is a parameter of a function and depth is {depth}")
                             return
@@ -211,7 +200,7 @@ class VisitorClass:
                                 return
                         elif task.type == Task.CONTEXT and param.name == task.var:
                             if depth <= 1:
-                                task.contexts.append(self.get_context(path, task))
+                                self.get_context(path, task)
                             else:
                                 # print(f"Refused to Context {param.name} because it is a parameter of a function and depth is {depth}")
                                 return
@@ -295,8 +284,10 @@ class VisitorClass:
             case Syntax.AssignmentExpression:
                 assert node.left
                 assert node.right
+                
                 self.visit_node(node.left, task, path)
                 self.visit_node(node.right, task, path)
+
             case Syntax.AssignmentPattern:
                 assert node.left
                 assert node.right

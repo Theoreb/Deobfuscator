@@ -33,18 +33,25 @@ class Desobfuscator:
 
     def save_thread(self, file: str):
         threading.Thread(target=self.save, args=(escodegen.generate(self.visitor.ast), file)).start()
-        bprint(f"[bold white][SAVED] {file}[/]")
 
     def desobfuscate(self) -> str:
         identifiers = self.visitor.process(VisitorTask(Task.INIT))
+
+        completed = 0
+        total_count = len([el for element in identifiers.values() for el in element])
+        print(f"Total count: {total_count}")
+
+        print(identifiers.keys())
 
         for id in identifiers.keys():
             for decl_node, id_type in identifiers[id]:
 
                 bprint(f"[bold blue][SEARCH {repr(id)}][/]: Searching context for {id_type.value}: {id} in Node of type: {decl_node.type if decl_node else None}")
-                context = self.visitor.process(VisitorTask(Task.CONTEXT, id, 1000, 5), decl_node)
-                context = ' '.join([' '.join(sublist) for sublist in context])
+                context = self.visitor.process(VisitorTask(Task.CONTEXT, id, 14000), decl_node)
+                context = "\n\n\n".join(context)[:14000]
                 bprint(f"[bold blue][CONTEXT {repr(id)}][/]: Found context (len: {len(context)} chars)")
+                
+                print(context)
 
                 renamed = ''
                 self.model.clear()
@@ -60,6 +67,10 @@ class Desobfuscator:
 
                 self.visitor.process(VisitorTask(Task.APPLY, id, renamed, id_type), decl_node)
                 
+                completed += 1
+
+                # Print progress
+                bprint(f"[bold yellow][Progress][/]: {completed} / {total_count} ({completed / total_count * 100:.2f}%)")
                 self.save_thread(f'deobfuscated.js')
         
         self.save(jsbeautifier.beautify(escodegen.generate(self.visitor.ast)), 'deobfuscated.js')

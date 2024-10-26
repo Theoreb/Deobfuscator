@@ -9,7 +9,7 @@ class Model:
     NOT_ALLOWED = [
         'function', 'while', 'for', 'if', 'else', 
         'var', 'let', 'const', 'import', 'export',
-        'true', 'false', 'null', 'undefined'
+        'true', 'false', 'null', 'undefined', 'default'
     ]
     def __init__(self, model: str = 'llama3.2:1b'):
         self.model: str = model
@@ -46,12 +46,8 @@ class Model:
             if len(self.messages) == 3:
                 self.messages.append({
                     'role': 'user',
-                    'content': f'According to your explanations, what is the original name for the {var_type.value} `{variable}` before obfuscation ? If the {var_type.value} isn\'t a default global javascript {var_type.value} or function or already has a good name, please change it to a different name.\nFor instance: `document` should be keeped as it is, but random {var_type.value}s should be changed to something more meaningful.'
+                    'content': f"Based on your explanation, suggest a one-word name for the {var_type.value} `{variable}`. Provide the response in this format: `The original name of the {var_type.value} `{variable}` before obfuscation is: <one-word>`."
                 })
-        self.messages.append({
-            'role': 'user',
-            'content': f'Format your response as "The original name of the {var_type.value} `{variable}` before obfuscation is : `<response>`"'
-        })
         self.messages.append({
             'role': 'assistant',
             'content': f'The original name of the {var_type.value} `{variable}` before obfuscation is: `'
@@ -69,20 +65,20 @@ class Model:
             self.messages[-1]['content'] = f'The original name of the {var_type.value} `{variable}` before obfuscation is: `' + renamed
             self.messages.append({
                 'role': 'user',
-                'content': f'Please give a name that accurately describes the {var_type.value} `{variable}` with more characters (more than 5 characters).'
+                'content': f"The name `{renamed}` is too short. Please suggest a name with at least 5 characters that accurately describes the {var_type.value} `{variable}`."
             })
             self.messages.append({
                 'role': 'assistant',
-                'content': f'The original name of the {var_type.value} `{variable}` before obfuscation is: `'
+                'content': f'Sorry, the name `{renamed}` is too short for the {var_type.value} `{variable}`. A better original name of the {var_type.value} `{variable}` before obfuscation is: `'
             })
-            response = ollama.chat(self.model, self.messages, options={'num_predict': 5})['message']['content']
+            response = ollama.chat(self.model, self.messages, options={'num_predict': 10})['message']['content']
             renamed = remove_non_alphabetic_chars(response.split()[0])
 
         return description, renamed, response
     
     def not_allowed(self, var: str, var_type: IdentifierType):
         self.already = True
-        self.add(f"You wanted to rename the obfuscated {var_type.value} `{var}` to a name that is not allowed. Please provide a different name.")
+        self.add(f"You wanted to rename the obfuscated {var_type.value} `{var}` to a name that is not allowed because it is a default javascript keyword. Please provide a different name.")
     
     def add_already(self, var: str, renamed: str):
         self.already = True
