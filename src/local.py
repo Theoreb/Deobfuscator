@@ -22,6 +22,7 @@ class Model:
         self.context = ""
 
     def generate(self, prompt: str, num_predict: int) -> str:
+        print(prompt)
         stream = ollama.generate(self.model, prompt, system=self.system_prompt, options={'num_predict': num_predict, 'num_ctx': self.context_size}, stream=True)
 
         response = ''
@@ -33,7 +34,7 @@ class Model:
             data = chunk['response']
             response += data
 
-            if re.search(r"\`\`\`([\s\S]*?)\`\`\`", response):
+            if re.search(r"\`\`\`json([\s\S]*?)\`\`\`", response):
                 print('stopping')
                 break
 
@@ -73,7 +74,7 @@ class Model:
     
     def predict(self, var: str, context: str, declared: set):
         self.clear_context()
-        prompt = f"Given the following piece of code, predict the original name of the variable/function `{var}` before obfuscation. If the context is unclear, give me a name which is the more meaningful possible to make it more readable. However, many variables haven't been obfuscated: if the variable/function `{var}` make sense, return the same name.\n\nHere some examples where the variable/function `{var}` appears:\n\n```javascript{context}```\n\nDon't give multiple proposals. Make sure the new name isn't already used in the code. IMPORTANT: Summarize your response in this JSON format: \n\n```json\n{{'name': '<myNewName>'}}\n```"
+        prompt = f"Given the following piece of code, predict the original name of the variable/function `{var}` before obfuscation. If the context is unclear, give me a name which is the more meaningful possible to make it more readable. However, many variables haven't been obfuscated: if the variable/function `{var}` make sense, return the same name.\n\nHere some examples where the variable/function `{var}` appears:\n\n```javascript{context}```\n\nDon't give multiple proposals. Make sure the new name isn't already used in the code. IMPORTANT: You absolutely need to summarize your response in this JSON format which indicates the new name of the variable/function `{var}`: \n\n```json\n{{'name': '<myNewName>'}}\n```"
         response = self.generate(prompt, 300)
 
         attempt = 0
@@ -94,6 +95,11 @@ class Model:
                     raise ValueError(f"Name not found in response: {name}")
                 if name.get('name', None) in declared and name.get('name', None) != var:
                     raise NameError(f"Name {name['name']} has been already declared")
+                
+                name_formated = name['name'].replace(' ', '_')
+                if len(name_formated) < 1:
+                    print(f"Failed to format name: {name}")
+                    name_formated = var
                 break
             except ValueError as e:
                 print("JSON error:", e)
@@ -108,4 +114,4 @@ class Model:
                 prompt = f"The name `{name['name']}` has been already declared in the code. Please give a new similar name for the variable/function `{var}` and format your response using this format: \n```json\n{{'name': '<myNewName>'}}\n```Ensure you have specified the 'name' field.\nThe new name for the variable/function `{var}` need to be more meaningful and not already used in the code.\n\nHere is the code where the variable/function `{var}` appears:\n\n```javascript\n{context}\n```"
                 response = self.generate(prompt, 200)
 
-        return name['name']
+        return name_formated

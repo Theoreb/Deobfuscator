@@ -71,7 +71,16 @@ class Scope:
         return escodegen.generate(self.node)
 
     def get_context(self, visitor: 'Visitor', limit: int, var: str) -> str:
-        code: str = escodegen.generate(self.node)
+        current_scope = self
+        while True:
+            if not current_scope.parent:
+                break
+            if len(escodegen.generate(current_scope.parent.node)) <= limit:
+                current_scope = current_scope.parent
+            else:
+                break
+        
+        code = escodegen.generate(current_scope.node)
         if len(code) <= limit:
             return code
 
